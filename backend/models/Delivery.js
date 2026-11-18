@@ -3,7 +3,8 @@ import mongoose from 'mongoose';
 const deliverySchema = new mongoose.Schema({
     source: { type: String, required: true },
     destination: { type: String, required: true },
-    courierName: { type: String, required: true },
+    // Link to the Courier collection instead of a raw string
+    courierId: { type: mongoose.Schema.Types.ObjectId, ref: 'Courier', required: true },
     status: { type: String, enum: ['Booked', 'In Transit', 'Delivered', 'Cancelled'], default: 'Booked' },
     cost: { type: Number, required: true },
     bookingDate: { type: Date, default: Date.now },
