@@ -1,7 +1,9 @@
 import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
-import deliveryRoutes from './routes/deliveries.js'
+import deliveryRoutes from './routes/deliveries.js';
+import courierRoutes from './routes/couriers.js';
+
 
 const app = express();
 
@@ -14,5 +16,6 @@ mongoose.connect('mongodb://127.0.0.1:27017/deliverySystem')
    .catch(err => console.error('Database connection error:', err));
 
 app.use('/api/deliveries',deliveryRoutes);
+app.use('/api/couriers', courierRoutes);
 
 app.listen(5000, () => console.log('Backend server running port 5000'));
