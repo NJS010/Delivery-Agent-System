@@ -1,21 +1,40 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 
 export default function App() {
+  const [couriers, setCouriers] = useState([]);
   const [source, setSource] = useState('');
   const [destination, setDestination] = useState('');
-  const [courierName, setCourierName] = useState('SpeedX Logistics');
+  const [selectedCourierId, setSelectedCourierId] = useState('');
   const [trackingId, setTrackingId] = useState('');
   const [message, setMessage] = useState('');
-  const [history, setHistory] = useState(null);
+  
+  const API_BASE = 'http://localhost:5000/api';
 
-  const API_BASE = 'http://localhost:5000/api/deliveries';
+  // Fetch couriers on component mount
+  useEffect(() => {
+    const fetchCouriers = async () => {
+      try {
+        const res = await axios.get(`${API_BASE}/couriers`);
+        setCouriers(res.data);
+        if (res.data.length > 0) setSelectedCourierId(res.data[0]._id);
+      } catch (error) {
+        console.error("Error fetching couriers");
+      }
+    };
+    fetchCouriers();
+  }, []);
 
-  // --- CUSTOMER FUNCTIONS ---
   const bookDelivery = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post(`${API_BASE}/book`, { source, destination, courierName, cost: 150 });
+      const selectedCourier = couriers.find(c => c._id === selectedCourierId);
+      const res = await axios.post(`${API_BASE}/deliveries/book`, { 
+        source, 
+        destination, 
+        courierId: selectedCourierId, 
+        cost: selectedCourier.basePrice 
+      });
       setMessage(`Booking Confirmed! Tracking ID: ${res.data.data._id}`);
       setTrackingId(res.data.data._id);
     } catch (error) {
@@ -25,7 +44,7 @@ export default function App() {
 
   const checkStatus = async () => {
     try {
-      const res = await axios.get(`${API_BASE}/${trackingId}`);
+      const res = await axios.get(`${API_BASE}/deliveries/${trackingId}`);
       setMessage(`Status: ${res.data.status} | Route: ${res.data.source} to ${res.data.destination}`);
     } catch (error) {
       setMessage('Invalid Tracking ID.');
@@ -34,113 +53,77 @@ export default function App() {
 
   const cancelDelivery = async () => {
     try {
-      const res = await axios.put(`${API_BASE}/${trackingId}/cancel`);
+      const res = await axios.put(`${API_BASE}/deliveries/${trackingId}/cancel`);
       setMessage(`Update: ${res.data.message}`);
     } catch (error) {
       setMessage('Error cancelling booking.');
     }
   };
 
-  const rescheduleDelivery = async () => {
-    const newDest = prompt("Enter new destination:");
-    if (!newDest) return;
-    try {
-      const res = await axios.put(`${API_BASE}/${trackingId}/reschedule`, { newDestination: newDest });
-      setMessage(`Rescheduled! New destination: ${res.data.data.destination}`);
-    } catch (error) {
-      setMessage('Error rescheduling.');
-    }
-  };
-
-  // --- ADMIN / COURIER FUNCTIONS ---
-  const completeDelivery = async (onTime) => {
-    try {
-      const res = await axios.put(`${API_BASE}/${trackingId}/complete`, { onTime });
-      setMessage(res.data.message);
-    } catch (error) {
-      setMessage('Error updating delivery status.');
-    }
-  };
-
-  const archiveRecord = async () => {
-    try {
-      const res = await axios.put(`${API_BASE}/${trackingId}/archive`);
-      setMessage('Record successfully moved to archives.');
-    } catch (error) {
-      setMessage('Error archiving record.');
-    }
-  };
-
-  const fetchCourierHistory = async () => {
-    try {
-      const res = await axios.get(`${API_BASE}/courier/${courierName}/history`);
-      setHistory(res.data);
-      setMessage(`Fetched history for ${courierName}`);
-    } catch (error) {
-      setMessage('Error fetching history.');
-    }
-  };
-
   return (
-    <div style={{ padding: '40px', fontFamily: 'system-ui', maxWidth: '800px', margin: 'auto' }}>
-      <h2>P03: Delivery Agent System (Full Build)</h2>
-      
-      {message && (
-        <div style={{ marginBottom: '20px', padding: '15px', background: '#d4edda', color: '#155724', borderRadius: '4px' }}>
-          <strong>System:</strong> {message}
-        </div>
-      )}
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+    <div className="min-h-screen bg-gray-50 p-8 font-sans">
+      <div className="max-w-5xl mx-auto">
         
-        {/* LEFT COLUMN: Booking & Status */}
-        <div>
-          <div style={{ border: '1px solid #ccc', padding: '20px', marginBottom: '20px', borderRadius: '8px' }}>
-            <h3>1. Book a Delivery</h3>
-            <form onSubmit={bookDelivery} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <input placeholder="Source" value={source} onChange={e => setSource(e.target.value)} required style={{ padding: '8px' }}/>
-              <input placeholder="Destination" value={destination} onChange={e => setDestination(e.target.value)} required style={{ padding: '8px' }}/>
-              <button type="submit" style={{ padding: '8px', background: '#007bff', color: 'white', border: 'none', cursor: 'pointer' }}>Book Now</button>
+        <header className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Delivery Logistics Engine</h1>
+          <p className="text-gray-500 mt-1">P03 System Dashboard</p>
+        </header>
+
+        {message && (
+          <div className="mb-6 p-4 bg-blue-50 border-l-4 border-blue-600 text-blue-800 rounded shadow-sm">
+            <span className="font-semibold">System Alert:</span> {message}
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          
+          {/* Booking Section */}
+          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">1. Dispatch Request</h2>
+            <form onSubmit={bookDelivery} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Source City</label>
+                <input type="text" className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-blue-500 outline-none" value={source} onChange={e => setSource(e.target.value)} required />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Destination City</label>
+                <input type="text" className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-blue-500 outline-none" value={destination} onChange={e => setDestination(e.target.value)} required />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Assign Courier</label>
+                <select className="w-full border border-gray-300 rounded-md p-2.5 bg-white focus:ring-2 focus:ring-blue-500 outline-none" value={selectedCourierId} onChange={e => setSelectedCourierId(e.target.value)}>
+                  {couriers.map(c => (
+                    <option key={c._id} value={c._id}>{c.name} (Base: ₹{c.basePrice})</option>
+                  ))}
+                </select>
+              </div>
+              <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-md transition-colors">
+                Initialize Delivery
+              </button>
             </form>
           </div>
 
-          <div style={{ border: '1px solid #ccc', padding: '20px', borderRadius: '8px' }}>
-            <h3>2. Customer Portal</h3>
-            <input placeholder="Enter Tracking ID" value={trackingId} onChange={e => setTrackingId(e.target.value)} style={{ padding: '8px', width: '95%', marginBottom: '10px' }}/>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
-              <button onClick={checkStatus} style={{ padding: '8px', cursor: 'pointer' }}>Status</button>
-              <button onClick={rescheduleDelivery} style={{ padding: '8px', cursor: 'pointer' }}>Reschedule</button>
-              <button onClick={cancelDelivery} style={{ padding: '8px', background: '#dc3545', color: 'white', border: 'none', cursor: 'pointer' }}>Cancel</button>
-            </div>
-          </div>
-        </div>
-
-        {/* RIGHT COLUMN: Admin & Logistics */}
-        <div>
-          <div style={{ border: '1px solid #ccc', padding: '20px', marginBottom: '20px', borderRadius: '8px', background: '#f8f9fa' }}>
-            <h3>3. Admin / Agent Portal</h3>
-            <p style={{ fontSize: '12px', color: '#666' }}>Requires Tracking ID from Section 2</p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
-              <button onClick={() => completeDelivery(true)} style={{ padding: '8px', background: '#28a745', color: 'white', border: 'none', cursor: 'pointer' }}>Deliver On-Time (Reward)</button>
-              <button onClick={() => completeDelivery(false)} style={{ padding: '8px', background: '#ffc107', border: 'none', cursor: 'pointer' }}>Deliver Late (Penalty)</button>
-              <button onClick={archiveRecord} style={{ padding: '8px', background: '#6c757d', color: 'white', border: 'none', cursor: 'pointer' }}>Archive Record</button>
-            </div>
-          </div>
-
-          <div style={{ border: '1px solid #ccc', padding: '20px', borderRadius: '8px', background: '#f8f9fa' }}>
-            <h3>4. Courier Analytics</h3>
-            <input value={courierName} onChange={e => setCourierName(e.target.value)} style={{ padding: '8px', width: '95%', marginBottom: '10px' }}/>
-            <button onClick={fetchCourierHistory} style={{ padding: '8px', width: '100%', cursor: 'pointer' }}>Generate Report</button>
-            
-            {history && (
-              <div style={{ marginTop: '15px', fontSize: '14px' }}>
-                <p><strong>Total Deliveries:</strong> {history.totalDeliveries}</p>
-                <p><strong>Net Reward/Penalty:</strong> ₹{history.netRewards}</p>
+          {/* Management Section */}
+          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">2. Order Tracking</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Active Tracking ID</label>
+                <input type="text" className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-blue-500 outline-none font-mono text-sm" value={trackingId} onChange={e => setTrackingId(e.target.value)} placeholder="Paste MongoDB Object ID..." />
               </div>
-            )}
+              
+              <div className="grid grid-cols-2 gap-3 pt-2">
+                <button onClick={checkStatus} className="bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium py-2 rounded-md transition-colors">
+                  Poll Status
+                </button>
+                <button onClick={cancelDelivery} className="bg-red-50 hover:bg-red-100 text-red-600 font-medium py-2 rounded-md transition-colors border border-red-200">
+                  Abort Booking
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
 
+        </div>
       </div>
     </div>
   );
