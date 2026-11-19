@@ -1,3 +1,4 @@
+import { verifyToken } from '../middleware/auth.js';
 import express from 'express';
 import Delivery from '../models/Delivery.js';
 
@@ -62,7 +63,7 @@ router.put('/:id/reschedule', async (req, res) => {
 });
 
 // Calculate reward/penalty and mark as delivered
-router.put('/:id/complete', async (req, res) => {
+router.put('/:id/complete', verifyToken ,async (req, res) => {
     try{
         const { onTime } = req.body;
         const amount = onTime ? 50 : -20;
@@ -83,7 +84,7 @@ router.put('/:id/complete', async (req, res) => {
 });
 
 // Archive a record
-router.put('/:id/archive', async (req, res) => {
+router.put('/:id/archive', verifyToken ,async (req, res) => {
     try {
         const delivery = await Delivery.findByIdAndUpdate(
             req.params.id,
@@ -97,7 +98,7 @@ router.put('/:id/archive', async (req, res) => {
 });
 
 // Get past services for a courier (Archived/Completed)
-router.get('/courier/:courierName/history', async (req, res) => {
+router.get('/courier/:courierName/history', verifyToken , async (req, res) => {
     try{
         const history = await Delivery.find({
             courierName: req.params.courierName,
