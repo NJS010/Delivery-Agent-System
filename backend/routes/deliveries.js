@@ -4,14 +4,30 @@ import Delivery from '../models/Delivery.js';
 
 const router = express.Router();
 
-// Book a delivery
+// Book a delivery (Updated with Validation)
 router.post('/book', async (req, res) => {
-    try{
-        const newDelivery = new Delivery(req.body);
+    try {
+        const { source, destination, courierId, cost } = req.body;
+
+        // 1. Validate input existence
+        if (!source || !destination || !courierId || !cost) {
+            return res.status(400).json({ error: 'Missing required fields. Source, destination, courierId, and cost are mandatory.' });
+        }
+
+        // 2. Validate data types/length
+        if (source.length < 2 || destination.length < 2) {
+            return res.status(400).json({ error: 'City names must be at least 2 characters long.' });
+        }
+
+        if (cost <= 0) {
+            return res.status(400).json({ error: 'Cost must be a valid positive amount.' });
+        }
+
+        const newDelivery = new Delivery({ source, destination, courierId, cost });
         const saved = await newDelivery.save();
         res.status(201).json({ message: 'Booking confirmed', data: saved });
-    } catch(err){
-        res.status(400).json({ error: err.message });
+    } catch (err) {
+        res.status(500).json({ error: 'Internal Server Error' });
     }
 });
 
