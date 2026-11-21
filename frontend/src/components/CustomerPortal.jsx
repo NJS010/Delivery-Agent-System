@@ -70,7 +70,11 @@ export default function CustomerPortal({ couriers, notify }) {
     if (!trackedOrder) return;
     try {
       const { data } = await api.put(`/deliveries/${trackedOrder._id}/cancel`);
-      setTrackedOrder({ ...trackedOrder, status: data.data.status });
+      setTrackedOrder({
+        ...trackedOrder,
+        status: data.data.status,
+        timeline: data.data.timeline || trackedOrder.timeline,
+      });
       notify('Booking cancelled', 'success');
     } catch (err) {
       notify(err.response?.data?.error || 'Cancellation failed', 'error');
@@ -235,6 +239,24 @@ export default function CustomerPortal({ couriers, notify }) {
                   </p>
                 </div>
               </div>
+
+              {trackedOrder.timeline?.length > 0 && (
+                <div className="bg-white p-4 rounded-lg border border-slate-200">
+                  <p className="text-xs font-semibold text-slate-500 uppercase mb-3">Shipment Timeline</p>
+                  <ol className="relative border-l border-slate-200 ml-2 space-y-3">
+                    {trackedOrder.timeline.map((event, idx) => (
+                      <li key={idx} className="ml-4">
+                        <span className="absolute -left-1.5 mt-1.5 w-3 h-3 rounded-full bg-blue-600 ring-4 ring-white" />
+                        <p className="text-xs font-semibold text-slate-900">{event.status}</p>
+                        <p className="text-xs text-slate-600">{event.note}</p>
+                        <p className="text-[11px] text-slate-400">
+                          {new Date(event.timestamp).toLocaleString('en-IN')}
+                        </p>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              )}
 
               {!['Delivered', 'Cancelled'].includes(trackedOrder.status) && (
                 <div className="pt-4 border-t border-slate-200 space-y-3">
