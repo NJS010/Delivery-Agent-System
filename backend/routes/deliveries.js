@@ -9,6 +9,7 @@ import {
   completeDelivery,
   archiveDelivery,
   getCourierAnalytics,
+  getDashboardStats
 } from '../controllers/deliveryController.js';
 
 const router = express.Router();
@@ -20,6 +21,7 @@ router.put('/:id/reschedule', rescheduleDelivery);
 router.put('/:id/cancel', cancelDelivery);
 
 // Protected / Admin routes
+router.get('/stats', verifyToken, getDashboardStats);
 router.get('/', verifyToken, getAllDeliveries);
 router.put('/:id/complete', verifyToken, completeDelivery);
 router.put('/:id/archive', verifyToken, archiveDelivery);
