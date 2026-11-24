@@ -4,9 +4,11 @@ import api from '../api/client';
 export default function AdminLogin({ onSuccess, notify }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSubmitting(true);
     try {
       const { data } = await api.post('/auth/login', { username, password });
       localStorage.setItem('adminToken', data.token);
@@ -14,6 +16,8 @@ export default function AdminLogin({ onSuccess, notify }) {
       notify('Signed in to Operations Console', 'success');
     } catch (err) {
       notify(err.response?.data?.error || 'Invalid credentials', 'error');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -25,7 +29,9 @@ export default function AdminLogin({ onSuccess, notify }) {
         <input
           type="text"
           placeholder="Username"
-          className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm"
+          minLength={3}
+          maxLength={40}
+          className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           required
@@ -33,16 +39,18 @@ export default function AdminLogin({ onSuccess, notify }) {
         <input
           type="password"
           placeholder="Password"
-          className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm"
+          minLength={6}
+          className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
         />
         <button
           type="submit"
-          className="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-2.5 rounded-lg text-sm"
+          disabled={submitting}
+          className="w-full bg-slate-900 hover:bg-slate-800 disabled:opacity-60 text-white font-medium py-2.5 rounded-lg text-sm transition"
         >
-          Sign In
+          {submitting ? 'Signing in...' : 'Sign In'}
         </button>
       </form>
     </div>

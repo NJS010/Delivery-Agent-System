@@ -3,14 +3,25 @@ import api from '../api/client';
 
 export default function CourierManager({ couriers, onCourierAdded, notify }) {
   const [form, setForm] = useState({ name: '', localities: '', basePrice: '' });
+  const [submitting, setSubmitting] = useState(false);
   const [analytics, setAnalytics] = useState(null);
 
   const handleAdd = async (e) => {
     e.preventDefault();
+    const localities = form.localities
+      .split(',')
+      .map((s) => s.trim())
+      .filter((s) => s.length >= 2);
+
+    if (!localities.length) {
+      return notify('Enter at least one valid city name (2+ characters).', 'error');
+    }
+
+    setSubmitting(true);
     try {
       await api.post('/couriers/add', {
-        name: form.name,
-        availableLocalities: form.localities.split(',').map((s) => s.trim()).filter(Boolean),
+        name: form.name.trim(),
+        availableLocalities: localities,
         basePrice: Number(form.basePrice),
       });
       setForm({ name: '', localities: '', basePrice: '' });
@@ -18,6 +29,8 @@ export default function CourierManager({ couriers, onCourierAdded, notify }) {
       notify('Courier added', 'success');
     } catch (err) {
       notify(err.response?.data?.error || 'Failed to add courier', 'error');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -38,7 +51,9 @@ export default function CourierManager({ couriers, onCourierAdded, notify }) {
           <input
             type="text"
             placeholder="Courier Name (e.g. BlueDart)"
-            className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm"
+            minLength={2}
+            maxLength={60}
+            className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
             required
@@ -46,24 +61,26 @@ export default function CourierManager({ couriers, onCourierAdded, notify }) {
           <input
             type="text"
             placeholder="Localities (comma-separated: Delhi, Mumbai, Patna)"
-            className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm"
+            className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
             value={form.localities}
             onChange={(e) => setForm({ ...form, localities: e.target.value })}
             required
           />
           <input
             type="number"
+            min={1}
             placeholder="Base Price (₹)"
-            className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm"
+            className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
             value={form.basePrice}
             onChange={(e) => setForm({ ...form, basePrice: e.target.value })}
             required
           />
           <button
             type="submit"
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg text-sm"
+            disabled={submitting}
+            className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-medium py-2.5 rounded-lg text-sm transition"
           >
-            Save Courier
+            {submitting ? 'Saving...' : 'Save Courier'}
           </button>
         </form>
       </section>

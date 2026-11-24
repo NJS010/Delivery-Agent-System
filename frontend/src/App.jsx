@@ -19,6 +19,7 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [token, setToken] = useState(() => localStorage.getItem('adminToken') || '');
   const [couriers, setCouriers] = useState([]);
+  const [health, setHealth] = useState('checking');
   const [toast, setToast] = useState(null);
 
   const notify = useCallback((text, type = 'info') => {
@@ -35,15 +36,28 @@ export default function App() {
     }
   }, [notify]);
 
+  const handleLogout = useCallback(
+    (msg = 'Signed out') => {
+      localStorage.removeItem('adminToken');
+      setToken('');
+      notify(msg);
+    },
+    [notify]
+  );
+
   useEffect(() => {
     loadCouriers();
+    api
+      .get('/health')
+      .then(({ data }) => setHealth(data.status === 'ok' ? 'ok' : 'degraded'))
+      .catch(() => setHealth('offline'));
   }, [loadCouriers]);
 
-  const handleLogout = useCallback(() => {
-    localStorage.removeItem('adminToken');
-    setToken('');
-    notify('Signed out');
-  }, [notify]);
+  useEffect(() => {
+    const onExpired = () => handleLogout('Session expired. Please sign in again.');
+    window.addEventListener('auth:expired', onExpired);
+    return () => window.removeEventListener('auth:expired', onExpired);
+  }, [handleLogout]);
 
   return (
     <div className="flex min-h-screen w-full bg-slate-50 text-slate-900">
@@ -51,7 +65,7 @@ export default function App() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         token={token}
-        onLogout={handleLogout}
+        onLogout={() => handleLogout()}
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />
@@ -70,8 +84,22 @@ export default function App() {
               <p className="text-xs text-slate-500 hidden sm:block">{PAGE_META[activeTab].subtitle}</p>
             </div>
           </div>
-          <span className="text-xs font-mono px-2.5 py-1 rounded-md bg-slate-100 text-slate-600 border border-slate-200">
-            v1.0 · Live
+
+          <span
+            className={`text-xs font-mono px-2.5 py-1 rounded-md border flex items-center gap-1.5 ${
+              health === 'ok'
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                : health === 'offline'
+                ? 'bg-red-50 text-red-700 border-red-200'
+                : 'bg-slate-100 text-slate-600 border-slate-200'
+            }`}
+          >
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${
+                health === 'ok' ? 'bg-emerald-500' : health === 'offline' ? 'bg-red-500' : 'bg-slate-400'
+              }`}
+            />
+            {health === 'ok' ? 'API Healthy' : health === 'offline' ? 'API Offline' : 'Checking...'}
           </span>
         </header>
 
