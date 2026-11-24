@@ -18,7 +18,15 @@ export default function OrdersTable({ deliveries, loading, page, pagination, onP
           </thead>
           <tbody className="divide-y divide-slate-200">
             {loading ? (
-              <tr><td colSpan="6" className="px-5 py-8 text-center text-slate-400">Loading shipments...</td></tr>
+              Array.from({ length: 5 }).map((_, i) => (
+                <tr key={i} className="animate-pulse">
+                  {Array.from({ length: 6 }).map((__, j) => (
+                    <td key={j} className="px-5 py-4">
+                      <div className="h-3.5 bg-slate-200 rounded w-24" />
+                    </td>
+                  ))}
+                </tr>
+              ))
             ) : deliveries.length ? (
               deliveries.map((d) => (
                 <tr key={d._id} className="hover:bg-slate-50">

@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Menu } from 'lucide-react';
 import api from './api/client';
 import Sidebar from './components/Sidebar';
+import Toast from './components/Toast';
 import CustomerPortal from './components/CustomerPortal';
 import AdminLogin from './components/AdminLogin';
 import AdminOperations from './components/AdminOperations';
@@ -14,6 +16,7 @@ const PAGE_META = {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('customer');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [token, setToken] = useState(() => localStorage.getItem('adminToken') || '');
   const [couriers, setCouriers] = useState([]);
   const [toast, setToast] = useState(null);
@@ -49,47 +52,42 @@ export default function App() {
         setActiveTab={setActiveTab}
         token={token}
         onLogout={handleLogout}
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
       />
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-16 bg-white border-b border-slate-200 px-8 flex items-center justify-between sticky top-0 z-10">
-          <div>
-            <h1 className="text-lg font-bold text-slate-900 leading-tight">{PAGE_META[activeTab].title}</h1>
-            <p className="text-xs text-slate-500">{PAGE_META[activeTab].subtitle}</p>
+        <header className="h-16 bg-white/80 backdrop-blur-md border-b border-slate-200 px-6 lg:px-8 flex items-center justify-between sticky top-0 z-20">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden p-2 -ml-2 rounded-lg text-slate-600 hover:bg-slate-100"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <div>
+              <h1 className="text-base font-bold text-slate-900 leading-tight">{PAGE_META[activeTab].title}</h1>
+              <p className="text-xs text-slate-500 hidden sm:block">{PAGE_META[activeTab].subtitle}</p>
+            </div>
           </div>
-          <span className="text-xs font-mono text-slate-400">CS311 · P03</span>
+          <span className="text-xs font-mono px-2.5 py-1 rounded-md bg-slate-100 text-slate-600 border border-slate-200">
+            v1.0 · Live
+          </span>
         </header>
 
-        <main className="flex-1 p-8">
-          {toast && (
-            <div
-              className={`mb-6 px-4 py-3 rounded-lg border text-sm font-medium ${
-                toast.type === 'error'
-                  ? 'bg-red-50 border-red-200 text-red-700'
-                  : toast.type === 'success'
-                  ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-                  : 'bg-blue-50 border-blue-200 text-blue-700'
-              }`}
-            >
-              {toast.text}
-            </div>
-          )}
-
+        <main className="flex-1 p-6 lg:p-8">
           {activeTab === 'customer' && <CustomerPortal couriers={couriers} notify={notify} />}
-
           {(activeTab === 'admin' || activeTab === 'couriers') && !token && (
             <AdminLogin onSuccess={setToken} notify={notify} />
           )}
-
-          {activeTab === 'admin' && token && (
-            <AdminOperations onAuthError={handleLogout} notify={notify} />
-          )}
-
+          {activeTab === 'admin' && token && <AdminOperations onAuthError={handleLogout} notify={notify} />}
           {activeTab === 'couriers' && token && (
             <CourierManager couriers={couriers} onCourierAdded={loadCouriers} notify={notify} />
           )}
         </main>
       </div>
+
+      <Toast toast={toast} onClose={() => setToast(null)} />
     </div>
   );
 }

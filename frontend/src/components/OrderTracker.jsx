@@ -1,12 +1,20 @@
 import { useState, useEffect } from 'react';
-import { Search, Clock } from 'lucide-react';
+import { Search, Clock, Copy, Check } from 'lucide-react';
 import api from '../api/client';
 import { STATUS_STYLES } from '../constants';
+import OrderStepper from './OrderStepper';
 
 export default function OrderTracker({ trackedOrder, setTrackedOrder, notify }) {
   const [trackInput, setTrackInput] = useState('');
   const [rescheduleDest, setRescheduleDest] = useState('');
   const [rescheduleDate, setRescheduleDate] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  const copyCode = () => {
+    navigator.clipboard.writeText(trackedOrder.trackingCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
 
   useEffect(() => {
     if (trackedOrder?.trackingCode) setTrackInput(trackedOrder.trackingCode);
@@ -43,7 +51,11 @@ export default function OrderTracker({ trackedOrder, setTrackedOrder, notify }) 
   const handleCancel = async () => {
     try {
       const { data } = await api.put(`/deliveries/${trackedOrder._id}/cancel`);
-      setTrackedOrder({ ...trackedOrder, status: data.data.status, timeline: data.data.timeline || trackedOrder.timeline });
+      setTrackedOrder({
+        ...trackedOrder,
+        status: data.data.status,
+        timeline: data.data.timeline || trackedOrder.timeline,
+      });
       notify('Booking cancelled', 'success');
     } catch (err) {
       notify(err.response?.data?.error || 'Cancellation failed', 'error');
@@ -58,9 +70,17 @@ export default function OrderTracker({ trackedOrder, setTrackedOrder, notify }) 
       <form onSubmit={handleTrack} className="flex gap-2 mb-5">
         <div className="relative flex-1">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-          <input type="text" placeholder="Enter Tracking Code (e.g. DLV-482910)" className="w-full border border-slate-300 rounded-lg pl-9 pr-3 py-2 text-sm font-mono uppercase focus:ring-2 focus:ring-blue-500 outline-none" value={trackInput} onChange={(e) => setTrackInput(e.target.value)} />
+          <input
+            type="text"
+            placeholder="Enter Tracking Code (e.g. DLV-482910)"
+            className="w-full border border-slate-300 rounded-lg pl-9 pr-3 py-2 text-sm font-mono uppercase focus:ring-2 focus:ring-blue-500 outline-none"
+            value={trackInput}
+            onChange={(e) => setTrackInput(e.target.value)}
+          />
         </div>
-        <button type="submit" className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-sm font-medium">Track</button>
+        <button type="submit" className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-sm font-medium">
+          Track
+        </button>
       </form>
 
       {trackedOrder ? (
@@ -68,17 +88,38 @@ export default function OrderTracker({ trackedOrder, setTrackedOrder, notify }) 
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs text-slate-500">Tracking ID</p>
-              <p className="font-mono text-lg font-bold text-slate-900">{trackedOrder.trackingCode}</p>
+              <div className="flex items-center gap-2">
+                <p className="font-mono text-lg font-bold text-slate-900">{trackedOrder.trackingCode}</p>
+                <button
+                  type="button"
+                  onClick={copyCode}
+                  title="Copy Tracking Code"
+                  className="p-1 rounded hover:bg-slate-200 text-slate-500"
+                >
+                  {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                </button>
+              </div>
             </div>
             <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${STATUS_STYLES[trackedOrder.status] || 'bg-slate-100'}`}>
               {trackedOrder.status}
             </span>
           </div>
 
+          <OrderStepper status={trackedOrder.status} />
+
           <div className="grid grid-cols-3 gap-4 text-sm bg-white p-4 rounded-lg border border-slate-200">
-            <div><p className="text-slate-400 text-xs">Route</p><p className="font-semibold text-slate-800">{trackedOrder.source} → {trackedOrder.destination}</p></div>
-            <div><p className="text-slate-400 text-xs">Assigned Courier</p><p className="font-semibold text-slate-800">{trackedOrder.courierId?.name || 'N/A'} (₹{trackedOrder.cost})</p></div>
-            <div><p className="text-slate-400 text-xs">Est. Delivery</p><p className="font-semibold text-slate-800">{new Date(trackedOrder.estimatedDelivery).toLocaleDateString('en-IN')}</p></div>
+            <div>
+              <p className="text-slate-400 text-xs">Route</p>
+              <p className="font-semibold text-slate-800">{trackedOrder.source} → {trackedOrder.destination}</p>
+            </div>
+            <div>
+              <p className="text-slate-400 text-xs">Assigned Courier</p>
+              <p className="font-semibold text-slate-800">{trackedOrder.courierId?.name || 'N/A'} (₹{trackedOrder.cost})</p>
+            </div>
+            <div>
+              <p className="text-slate-400 text-xs">Est. Delivery</p>
+              <p className="font-semibold text-slate-800">{new Date(trackedOrder.estimatedDelivery).toLocaleDateString('en-IN')}</p>
+            </div>
           </div>
 
           {trackedOrder.timeline?.length > 0 && (
@@ -100,11 +141,30 @@ export default function OrderTracker({ trackedOrder, setTrackedOrder, notify }) 
           {!['Delivered', 'Cancelled'].includes(trackedOrder.status) && (
             <div className="pt-4 border-t border-slate-200 space-y-3">
               <form onSubmit={handleReschedule} className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <input type="text" placeholder="New destination" className="border border-slate-300 rounded-lg px-3 py-2 text-xs bg-white" value={rescheduleDest} onChange={(e) => setRescheduleDest(e.target.value)} />
-                <input type="date" className="border border-slate-300 rounded-lg px-3 py-2 text-xs bg-white" value={rescheduleDate} onChange={(e) => setRescheduleDate(e.target.value)} />
-                <button type="submit" className="bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-medium py-2">Reschedule Order</button>
+                <input
+                  type="text"
+                  placeholder="New destination"
+                  className="border border-slate-300 rounded-lg px-3 py-2 text-xs bg-white"
+                  value={rescheduleDest}
+                  onChange={(e) => setRescheduleDest(e.target.value)}
+                />
+                <input
+                  type="date"
+                  className="border border-slate-300 rounded-lg px-3 py-2 text-xs bg-white"
+                  value={rescheduleDate}
+                  onChange={(e) => setRescheduleDate(e.target.value)}
+                />
+                <button type="submit" className="bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-medium py-2">
+                  Reschedule Order
+                </button>
               </form>
-              <button onClick={handleCancel} className="w-full py-2 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-medium">Cancel Booking</button>
+              <button
+                type="button"
+                onClick={handleCancel}
+                className="w-full py-2 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-medium"
+              >
+                Cancel Booking
+              </button>
             </div>
           )}
         </div>
